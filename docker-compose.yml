@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: anjoman-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - MISTRAL_API_KEY=${MISTRAL_API_KEY}
+      - COHERE_API_KEY=${COHERE_API_KEY}
+      - TOGETHER_API_KEY=${TOGETHER_API_KEY}
+      - SESSIONS_DIR=/app/data/sessions
+      - DEFAULT_BUDGET=5.00
+    volumes:
+      - ./data/sessions:/app/data/sessions
+      # For development: mount code for hot reload
+      # - ./backend:/app
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=http://localhost:8000
+    container_name: anjoman-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://backend:8000
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  session_data:
+    driver: local
+
+networks:
+  default:
+    name: anjoman-network
+

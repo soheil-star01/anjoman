@@ -1,0 +1,56 @@
+version: '3.8'
+
+# Development-optimized docker-compose with hot reload
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: anjoman-backend-dev
+    ports:
+      - "8000:8000"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - MISTRAL_API_KEY=${MISTRAL_API_KEY}
+      - COHERE_API_KEY=${COHERE_API_KEY}
+      - TOGETHER_API_KEY=${TOGETHER_API_KEY}
+      - SESSIONS_DIR=/app/data/sessions
+      - DEFAULT_BUDGET=5.00
+    volumes:
+      # Mount source code for hot reload
+      - ./backend:/app
+      - ./data/sessions:/app/data/sessions
+      # Exclude virtual environment
+      - /app/venv
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    restart: unless-stopped
+
+  frontend:
+    image: node:18-alpine
+    container_name: anjoman-frontend-dev
+    working_dir: /app
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - WATCHPACK_POLLING=true
+    volumes:
+      # Mount source code for hot reload
+      - ./frontend:/app
+      # Exclude node_modules
+      - /app/node_modules
+      - /app/.next
+    command: sh -c "npm install && npm run dev"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  session_data:
+    driver: local
+
+networks:
+  default:
+    name: anjoman-network-dev
+
