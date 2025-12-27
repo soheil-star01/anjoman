@@ -1,154 +1,154 @@
 # Anjoman — Structured Multi-LLM Deliberation Tool
 
-Anjoman is an open-source, human-in-the-loop deliberation tool that orchestrates multiple Large Language Models (LLMs) into a structured discussion, similar to an expert council.
-
-## Overview
-
-**Anjoman is NOT:**
-- A chatbot replacement
-- An autonomous agent system
-
-**Anjoman IS:**
-- A thinking aid for complex problems
-- A structured deliberation framework
-- A transparent, human-guided process
-
-## Core Concept
-
-- Multiple LLM agents (Rays) participate in moderated discussions
-- Each agent has a clear role, model, and turn order
-- After each iteration, the system produces summaries and suggestions
-- **You** review, adjust, and decide how to continue
-
-## Naming Convention
-
-- **System**: Anjoman (assembly/council)
-- **Orchestrator**: Dana (moderator & summarizer)
-- **Agents**: Ray-1, Ray-2, Ray-3... (differentiated by role and model)
-
-## Architecture
-
-### Backend
-- **Python** with FastAPI
-- **LangGraph** for deterministic agent orchestration
-- **LiteLLM** for unified LLM provider interface
-- File-based session storage (JSON)
-
-### Frontend
-- **Next.js** (React)
-- **Tailwind CSS**
-- Markdown-first rendering
-- Real-time cost tracking
+Human-in-the-loop deliberation tool that orchestrates multiple LLMs into structured discussions.
 
 ## Quick Start
 
-### Option 1: Docker (Recommended) 🐳
+### Local Development (Recommended for Development)
 
-**Prerequisites**: Docker and Docker Compose installed
-
+**Backend (Terminal 1):**
 ```bash
-# 1. Setup environment (interactive)
-./setup-env.sh
-
-# 2. Start everything
-docker-compose up -d
-# OR: make up
-
-# 3. Open http://localhost:3000
+cd backend
+source venv/bin/activate
+uvicorn main:app --reload
 ```
 
-See [DOCKER_QUICKSTART.md](DOCKER_QUICKSTART.md) or [DOCKER.md](DOCKER.md) for detailed Docker instructions.
-
-### Option 2: Manual Setup
-
-**Prerequisites**: Python 3.10+ and Node.js 18+
-
+**Frontend (Terminal 2):**
 ```bash
-# Backend
-cd backend
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-pip install -r requirements.txt
-cp .env.example .env
-# Edit .env and add your API keys
-uvicorn main:app --reload --port 8000
-
-# Frontend (in a new terminal)
 cd frontend
-npm install
 npm run dev
 ```
 
-Visit `http://localhost:3000` to use Anjoman.
+Open http://localhost:3000
 
-See [SETUP.md](SETUP.md) for detailed manual setup instructions.
+### Docker (Recommended for Deployment)
+
+```bash
+docker-compose up -d
+```
+
+## Setup
+
+### First Time Setup
+
+**Backend:**
+```bash
+cd backend
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+
+# Add your API keys to .env
+cp .env.example .env
+# Edit .env and add: OPENAI_API_KEY=sk-...
+```
+
+**Frontend:**
+```bash
+cd frontend
+npm install
+```
+
+### API Keys
+
+Add at least one API key to `backend/.env`:
+- **OpenAI**: https://platform.openai.com/api-keys
+- **Anthropic**: https://console.anthropic.com/
+- **Mistral**: https://console.mistral.ai/
+
+## What is Anjoman?
+
+Anjoman is **not** a chatbot or autonomous agent system. It's a structured thinking tool.
+
+**Core concept:**
+- Multiple LLM agents (Rays) with distinct roles and models
+- Dana (orchestrator) moderates and summarizes
+- You guide the discussion at each iteration
+- Sessions saved as JSON files
+
+**Philosophy:**
+- Clarity over speed
+- Structure over creativity
+- Transparency over confidence
 
 ## Features
 
-### ✅ MVP (Current)
-- Multi-agent orchestration with defined roles
-- Turn-based sequential discussion
-- Session persistence (JSON files)
-- Per-agent cost tracking
-- Global budget enforcement
-- Summary generation after each iteration
-- Session resume capability
+- ✅ Multi-agent orchestration (GPT-4, Claude, Mistral, etc.)
+- ✅ Turn-based sequential discussion
+- ✅ Real-time cost tracking and budget limits
+- ✅ Session persistence (JSON files)
+- ✅ Resume and review past sessions
+- ✅ No database required
 
-### 🔮 Future
-- Branching discussions
-- Tool calling for agents
-- Real-time collaboration
-- Custom agent personalities
-- Export to different formats
+## Tech Stack
 
-## Session Storage
+- **Backend**: Python, FastAPI, LiteLLM
+- **Frontend**: Next.js, React, TypeScript, Tailwind
+- **Storage**: File-based JSON
 
-Sessions are stored as simple JSON files in `data/sessions/`:
+## Project Structure
 
 ```
-data/
-  sessions/
-    anj-2025-001.json
-    anj-2025-002.json
+anjoman/
+├── backend/           # Python FastAPI backend
+├── frontend/          # Next.js frontend
+├── data/sessions/     # Session storage
+└── README.md
 ```
 
-Each session contains:
-- Agent configurations
-- Full discussion history
-- Cost tracking
-- Iteration summaries
+## Development
 
-## Cost Tracking
+Hot reload is enabled for both services. Just edit and save.
 
-Anjoman tracks costs in real-time:
-- Per-agent token usage and cost
-- Global session budget
-- Warning before budget limits
-- Transparent pricing via LiteLLM
+**Useful commands:**
+```bash
+# Backend with different port
+uvicorn main:app --reload --port 8001
 
-## Philosophy
+# Frontend with different port
+npm run dev -- -p 3001
 
-Anjoman favors:
-- **Clarity** over speed
-- **Structure** over creativity
-- **Transparency** over confidence
+# Build frontend for production
+npm run build
 
-It's a thinking aid, not an answer generator.
+# Run tests
+cd backend
+pytest
 
-## Contributing
+# Run tests with coverage
+pytest --cov=. --cov-report=html
+```
 
-This is an early-stage open-source project. Contributions, feedback, and ideas are welcome!
+## Docker
+
+```bash
+# Start
+docker-compose up -d
+
+# Stop
+docker-compose down
+
+# View logs
+docker-compose logs -f
+
+# Development mode (hot reload)
+docker-compose -f docker-compose.dev.yml up
+```
+
+## Make Commands
+
+```bash
+make up       # Start with Docker
+make dev      # Dev mode with hot reload
+make down     # Stop services
+make logs     # View logs
+make help     # See all commands
+```
 
 ## License
 
-MIT License - see LICENSE file for details
+MIT License
 
-## Project Status
+## Status
 
-⚠️ **Early Development Phase** - APIs and features may change
-
-- Local-first
-- Open-source first
-- No monetization plans
-- Community-driven development
-
+⚠️ Early development - APIs may change

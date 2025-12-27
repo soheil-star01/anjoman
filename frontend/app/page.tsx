@@ -1,10 +1,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { MessageSquare, Plus, History } from 'lucide-react'
+import { MessageSquare, Plus, History, Key } from 'lucide-react'
 import NewSessionForm from '@/components/NewSessionForm'
 import SessionView from '@/components/SessionView'
 import SessionList from '@/components/SessionList'
+import ApiKeySettings, { ApiKeys } from '@/components/ApiKeySettings'
+import CostDisclaimer from '@/components/CostDisclaimer'
 import { Session, SessionListItem } from '@/types'
 import { api } from '@/lib/api'
 
@@ -12,10 +14,25 @@ export default function Home() {
   const [view, setView] = useState<'new' | 'session' | 'list'>('new')
   const [currentSession, setCurrentSession] = useState<Session | null>(null)
   const [sessions, setSessions] = useState<SessionListItem[]>([])
+  const [showApiKeys, setShowApiKeys] = useState(false)
+  const [apiKeys, setApiKeys] = useState<ApiKeys>({})
 
   useEffect(() => {
     loadSessions()
+    // Load API keys from localStorage
+    const stored = localStorage.getItem('anjoman_api_keys')
+    if (stored) {
+      setApiKeys(JSON.parse(stored))
+    } else {
+      // Show API key modal on first visit
+      setShowApiKeys(true)
+    }
   }, [])
+
+  const handleSaveApiKeys = (keys: ApiKeys) => {
+    setApiKeys(keys)
+    localStorage.setItem('anjoman_api_keys', JSON.stringify(keys))
+  }
 
   const loadSessions = async () => {
     try {
@@ -68,6 +85,14 @@ export default function Home() {
             
             <div className="flex space-x-2">
               <button
+                onClick={() => setShowApiKeys(true)}
+                className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+              >
+                <Key className="w-4 h-4" />
+                <span>API Keys</span>
+              </button>
+              
+              <button
                 onClick={handleBackToNew}
                 className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
               >
@@ -90,13 +115,19 @@ export default function Home() {
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {view === 'new' && (
-          <NewSessionForm onSessionCreated={handleNewSession} />
+          <>
+            <NewSessionForm onSessionCreated={handleNewSession} apiKeys={apiKeys} />
+            <div className="max-w-3xl mx-auto mt-4">
+              <CostDisclaimer />
+            </div>
+          </>
         )}
         
         {view === 'session' && currentSession && (
           <SessionView 
             session={currentSession} 
             onSessionUpdate={setCurrentSession}
+            apiKeys={apiKeys}
           />
         )}
         
@@ -108,6 +139,15 @@ export default function Home() {
           />
         )}
       </div>
+
+      {/* API Key Settings Modal */}
+      {showApiKeys && (
+        <ApiKeySettings
+          currentKeys={apiKeys}
+          onSave={handleSaveApiKeys}
+          onClose={() => setShowApiKeys(false)}
+        />
+      )}
     </main>
   )
 }
