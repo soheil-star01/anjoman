@@ -36,12 +36,19 @@ class AgentMessage(BaseModel):
     cost: float = 0.0
 
 
+class SuggestedDirection(BaseModel):
+    """A suggested direction for the next iteration."""
+    option: str = Field(..., description="Brief title of the suggestion (5-10 words)")
+    description: str = Field(..., description="Detailed explanation of this direction")
+
+
 class IterationSummary(BaseModel):
     """Summary after each iteration."""
     iteration_number: int
     summary: str
     key_disagreements: Optional[list[str]] = None
-    suggested_direction: str
+    suggested_directions: list[SuggestedDirection] = Field(default_factory=list)
+    suggested_direction: Optional[str] = None  # Deprecated, kept for backwards compatibility
     total_cost: float
     timestamp: datetime
 
@@ -50,7 +57,7 @@ class Iteration(BaseModel):
     """A complete iteration of the discussion."""
     iteration_number: int
     messages: list[AgentMessage]
-    summary: IterationSummary
+    summary: Optional[IterationSummary] = None
     user_guidance: Optional[str] = None
 
 
@@ -84,17 +91,53 @@ class Session(BaseModel):
     status: SessionStatus = SessionStatus.ACTIVE
 
 
+class ApiKeys(BaseModel):
+    """User-provided API keys."""
+    openai_api_key: Optional[str] = None
+    anthropic_api_key: Optional[str] = None
+    mistral_api_key: Optional[str] = None
+    google_api_key: Optional[str] = None
+    cohere_api_key: Optional[str] = None
+    
+    def get_available_providers(self) -> list[str]:
+        """Get list of providers with valid API keys."""
+        providers = []
+        if self.openai_api_key:
+            providers.append("openai")
+        if self.anthropic_api_key:
+            providers.append("anthropic")
+        if self.mistral_api_key:
+            providers.append("mistral")
+        if self.google_api_key:
+            providers.append("google")
+        if self.cohere_api_key:
+            providers.append("cohere")
+        return providers
+
+
 class CreateSessionRequest(BaseModel):
     """Request to create a new session."""
     issue: str
     budget: float = 5.0
+    num_agents: Optional[int] = None  # None means Dana decides
+    model_preference: str = "balanced"  # "budget", "balanced", or "performance"
     suggested_agents: Optional[list[AgentConfig]] = None
+    api_keys: Optional[ApiKeys] = None
 
+
+class ModelInfo(BaseModel):
+    """Information about a model."""
+    model_id: str
+    display_name: str
+    provider: str
+    description: Optional[str] = None
+    
 
 class SessionProposal(BaseModel):
     """Dana's proposal for agent setup."""
     proposed_agents: list[AgentConfig]
     rationale: str
+    available_models: list[ModelInfo]
 
 
 class ContinueSessionRequest(BaseModel):
@@ -102,6 +145,7 @@ class ContinueSessionRequest(BaseModel):
     session_id: str
     user_guidance: Optional[str] = None
     accept_suggestion: bool = True
+    api_keys: Optional[ApiKeys] = None
 
 
 class SessionListItem(BaseModel):

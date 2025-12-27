@@ -20,19 +20,27 @@ export default function AgentCard({ agent }: AgentCardProps) {
             <span className="text-sm text-gray-700">{agent.role}</span>
           </div>
           
-          <div className="text-xs text-gray-600 mb-2">{agent.model}</div>
+          <div className="text-xs text-gray-600 mb-2 font-mono">{agent.model}</div>
           
           {agent.style && (
             <div className="text-xs text-gray-500 italic mb-2">{agent.style}</div>
           )}
           
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-gray-600">
-              {agent.tokens_in + agent.tokens_out} tokens
-            </span>
-            <span className="font-medium text-blue-600">
-              ${agent.cost_used.toFixed(4)}
-            </span>
+          <div className="space-y-1">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-gray-600">Tokens:</span>
+              <span className="font-semibold text-gray-900">
+                {(agent.tokens_in + agent.tokens_out).toLocaleString()}
+              </span>
+            </div>
+            {agent.cost_used > 0 && (
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-gray-600">Cost:</span>
+                <span className="font-medium text-blue-600">
+                  ${agent.cost_used.toFixed(4)}
+                </span>
+              </div>
+            )}
           </div>
         </div>
       </div>

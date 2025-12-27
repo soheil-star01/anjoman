@@ -20,11 +20,17 @@ export interface AgentMessage {
   cost: number
 }
 
+export interface SuggestedDirection {
+  option: string
+  description: string
+}
+
 export interface IterationSummary {
   iteration_number: number
   summary: string
   key_disagreements?: string[]
-  suggested_direction: string
+  suggested_directions?: SuggestedDirection[]
+  suggested_direction?: string  // Deprecated, kept for backwards compatibility
   total_cost: number
   timestamp: string
 }
@@ -56,16 +62,39 @@ export interface Session {
   status: SessionStatus
 }
 
+export interface ApiKeys {
+  openai_api_key?: string
+  anthropic_api_key?: string
+  mistral_api_key?: string
+  google_api_key?: string
+  cohere_api_key?: string
+}
+
+export interface ModelInfo {
+  model_id: string
+  display_name: string
+  provider: string
+  description?: string
+}
+
+export interface SessionProposal {
+  proposed_agents: AgentConfig[]
+  rationale: string
+  available_models: ModelInfo[]
+}
+
 export interface CreateSessionRequest {
   issue: string
   budget: number
   suggested_agents?: AgentConfig[]
+  api_keys?: ApiKeys
 }
 
 export interface ContinueSessionRequest {
   session_id: string
   user_guidance?: string
   accept_suggestion: boolean
+  api_keys?: ApiKeys
 }
 
 export interface SessionListItem {

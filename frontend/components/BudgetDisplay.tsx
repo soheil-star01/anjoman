@@ -14,23 +14,31 @@ export default function BudgetDisplay({ budget }: BudgetDisplayProps) {
     <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 min-w-[200px]">
       <div className="flex items-center space-x-2 mb-2">
         <DollarSign className="w-4 h-4 text-gray-600" />
-        <span className="text-sm font-semibold text-gray-700">Budget</span>
+        <span className="text-sm font-semibold text-gray-700">Budget Tracker</span>
       </div>
 
       <div className="space-y-2">
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-gray-600">Used:</span>
-          <span className={`font-medium ${isExceeded ? 'text-red-600' : isWarning ? 'text-yellow-600' : 'text-green-600'}`}>
-            ${budget.used.toFixed(4)}
-          </span>
-        </div>
+        {budget.used > 0 ? (
+          <>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-gray-600">Used:</span>
+              <span className={`font-medium ${isExceeded ? 'text-red-600' : isWarning ? 'text-yellow-600' : 'text-green-600'}`}>
+                ≈ ${budget.used.toFixed(4)}
+              </span>
+            </div>
 
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-gray-600">Total:</span>
-          <span className="font-medium text-gray-900">
-            ${budget.total_budget.toFixed(2)}
-          </span>
-        </div>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-gray-600">Limit:</span>
+              <span className="font-medium text-gray-900">
+                ${budget.total_budget.toFixed(2)}
+              </span>
+            </div>
+          </>
+        ) : (
+          <div className="text-xs text-gray-500 italic">
+            Cost tracking in progress...
+          </div>
+        )}
 
         {/* Progress bar */}
         <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
