@@ -1,39 +1,68 @@
 'use client'
 
 import { useState } from 'react'
-import { Session } from '@/types'
+import { Session, AgentMessage } from '@/types'
 import { Loader2, Play, CheckCircle, AlertCircle } from 'lucide-react'
-import { api } from '@/lib/api'
+import { api, streamIteration } from '@/lib/api'
 import AgentCard from './AgentCard'
 import IterationView from './IterationView'
 import BudgetDisplay from './BudgetDisplay'
+import StreamingIteration from './StreamingIteration'
+import { ApiKeys } from './ApiKeySettings'
 
 interface SessionViewProps {
   session: Session
   onSessionUpdate: (session: Session) => void
+  apiKeys: ApiKeys
 }
 
-export default function SessionView({ session, onSessionUpdate }: SessionViewProps) {
+export default function SessionView({ session, onSessionUpdate, apiKeys }: SessionViewProps) {
   const [loading, setLoading] = useState(false)
   const [userGuidance, setUserGuidance] = useState('')
   const [error, setError] = useState('')
+  const [streamingMessages, setStreamingMessages] = useState<AgentMessage[]>([])
+  const [currentAgent, setCurrentAgent] = useState<{ id: string; role: string } | undefined>()
+  const [isSummarizing, setIsSummarizing] = useState(false)
 
   const handleIterate = async () => {
     setError('')
-    setLoading(true)
+    setStreamingMessages([])
+    setCurrentAgent(undefined)
+    setIsSummarizing(false)
+    setLoading(true)  // This triggers auto-collapse of previous iterations
 
     try {
-      const updatedSession = await api.iterateSession(session.session_id, {
+      // Use streaming iteration
+      const stream = streamIteration(session.session_id, {
         session_id: session.session_id,
         user_guidance: userGuidance || undefined,
         accept_suggestion: true,
+        api_keys: apiKeys,
       })
-      onSessionUpdate(updatedSession)
-      setUserGuidance('')
+
+      for await (const event of stream) {
+        if (event.type === 'agent_start') {
+          setCurrentAgent({ id: event.agent_id, role: event.agent_role })
+        } else if (event.type === 'agent_response') {
+          setStreamingMessages(prev => [...prev, event.message])
+          setCurrentAgent(undefined)
+        } else if (event.type === 'summarizing') {
+          setIsSummarizing(true)
+        } else if (event.type === 'complete') {
+          onSessionUpdate(event.session)
+          setUserGuidance('')
+          setStreamingMessages([])
+          setIsSummarizing(false)
+        } else if (event.type === 'error') {
+          setError(event.message)
+        }
+      }
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to iterate session')
+      setError(err.message || 'Failed to iterate session')
     } finally {
       setLoading(false)
+      setCurrentAgent(undefined)
+      setIsSummarizing(false)
     }
   }
 
@@ -80,9 +109,29 @@ export default function SessionView({ session, onSessionUpdate }: SessionViewPro
 
       {/* Iterations */}
       <div className="space-y-4">
-        {session.iterations.map((iteration) => (
-          <IterationView key={iteration.iteration_number} iteration={iteration} />
-        ))}
+        {session.iterations.map((iteration, idx) => {
+          const isLatest = idx === session.iterations.length - 1
+          
+          return (
+            <IterationView 
+              key={iteration.iteration_number} 
+              iteration={iteration}
+              onSelectSuggestion={(suggestion) => setUserGuidance(suggestion)}
+              isLatest={isLatest}
+              autoCollapsed={loading}  // Collapse all when new iteration starts
+            />
+          )
+        })}
+        
+        {/* Streaming Iteration */}
+        {loading && streamingMessages.length > 0 && (
+          <StreamingIteration
+            messages={streamingMessages}
+            currentAgent={currentAgent}
+            isSummarizing={isSummarizing}
+            totalAgents={session.agents.length}
+          />
+        )}
       </div>
 
       {/* Continue or Complete */}
@@ -97,6 +146,11 @@ export default function SessionView({ session, onSessionUpdate }: SessionViewPro
               <label htmlFor="guidance" className="block text-sm font-medium text-gray-700 mb-2">
                 Your Guidance (Optional)
               </label>
+              {session.iterations.length > 0 && session.iterations[session.iterations.length - 1].summary && (
+                <p className="text-xs text-gray-500 mb-2">
+                  💡 Tip: Click Dana&apos;s suggestion above to use it as guidance
+                </p>
+              )}
               <textarea
                 id="guidance"
                 value={userGuidance}
@@ -105,6 +159,14 @@ export default function SessionView({ session, onSessionUpdate }: SessionViewPro
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
                 placeholder="Provide direction, ask for clarification, or let the agents continue..."
               />
+              {userGuidance && (
+                <button
+                  onClick={() => setUserGuidance('')}
+                  className="mt-2 text-sm text-gray-500 hover:text-gray-700 underline"
+                >
+                  Clear guidance
+                </button>
+              )}
             </div>
 
             {error && (
