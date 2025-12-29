@@ -1,10 +1,30 @@
 # Anjoman — Structured Multi-LLM Deliberation Tool
 
-Human-in-the-loop deliberation tool that orchestrates multiple LLMs into structured discussions.
+> **Anjoman** — Persian: انجمن • Turkish: encümen • Urdu: انجمن
+> Meaning: "assembly", "gathering", "council"
+
+A human-in-the-loop deliberation tool that orchestrates multiple LLMs into structured discussions — like convening a council of diverse minds to think through complex problems.
+
+## What is Anjoman?
+
+Anjoman is **not** a chatbot or autonomous agent system. It's a structured thinking tool.
+
+**Core concept:**
+- Multiple LLM agents (Rays) with distinct roles and models
+- Dana (orchestrator) moderates and summarizes
+- You guide the discussion at each iteration
+- Sessions saved as JSON files
+
+**Philosophy:**
+- Clarity over speed
+- Structure over creativity
+- Transparency over confidence
 
 ## Quick Start
 
 ### Local Development (Recommended for Development)
+
+First time? See [Setup](#setup) below.
 
 **Backend (Terminal 1):**
 ```bash
@@ -37,10 +57,6 @@ cd backend
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-
-# Add your API keys to .env
-cp .env.example .env
-# Edit .env and add: OPENAI_API_KEY=sk-...
 ```
 
 **Frontend:**
@@ -51,25 +67,7 @@ npm install
 
 ### API Keys
 
-Add at least one API key to `backend/.env`:
-- **OpenAI**: https://platform.openai.com/api-keys
-- **Anthropic**: https://console.anthropic.com/
-- **Mistral**: https://console.mistral.ai/
-
-## What is Anjoman?
-
-Anjoman is **not** a chatbot or autonomous agent system. It's a structured thinking tool.
-
-**Core concept:**
-- Multiple LLM agents (Rays) with distinct roles and models
-- Dana (orchestrator) moderates and summarizes
-- You guide the discussion at each iteration
-- Sessions saved as JSON files
-
-**Philosophy:**
-- Clarity over speed
-- Structure over creativity
-- Transparency over confidence
+API keys are provided through the UI when creating a new session.
 
 ## Features
 
@@ -96,54 +94,6 @@ anjoman/
 └── README.md
 ```
 
-## Development
-
-Hot reload is enabled for both services. Just edit and save.
-
-**Useful commands:**
-```bash
-# Backend with different port
-uvicorn main:app --reload --port 8001
-
-# Frontend with different port
-npm run dev -- -p 3001
-
-# Build frontend for production
-npm run build
-
-# Run tests
-cd backend
-pytest
-
-# Run tests with coverage
-pytest --cov=. --cov-report=html
-```
-
-## Docker
-
-```bash
-# Start
-docker-compose up -d
-
-# Stop
-docker-compose down
-
-# View logs
-docker-compose logs -f
-
-# Development mode (hot reload)
-docker-compose -f docker-compose.dev.yml up
-```
-
-## Make Commands
-
-```bash
-make up       # Start with Docker
-make dev      # Dev mode with hot reload
-make down     # Stop services
-make logs     # View logs
-make help     # See all commands
-```
 
 ## License
 
