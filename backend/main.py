@@ -7,6 +7,7 @@ from datetime import datetime
 from typing import Optional
 import json
 import asyncio
+import random
 
 from config import get_settings
 from models import (
@@ -15,6 +16,7 @@ from models import (
 )
 from session_manager import SessionManager
 from orchestrator import Dana, Ray
+from models_config import MODELS
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -115,9 +117,13 @@ async def iterate_session(session_id: str, request: ContinueSessionRequest):
     # Determine iteration number
     iteration_number = len(session.iterations) + 1
     
-    # Collect messages from each agent in sequence
+    # Randomize agent order for this iteration
+    agents_order = session.agents.copy()
+    random.shuffle(agents_order)
+    
+    # Collect messages from each agent in randomized order
     messages = []
-    for agent in session.agents:
+    for agent in agents_order:
         # Check budget before each agent
         if session.budget.used >= session.budget.total_budget:
             break
@@ -182,9 +188,13 @@ async def iterate_session_stream(session_id: str, request: ContinueSessionReques
             iteration_number = len(session.iterations) + 1
             yield f"data: {json.dumps({'type': 'start', 'iteration': iteration_number, 'total_agents': len(session.agents)})}\n\n"
             
-            # Collect messages from each agent in sequence
+            # Randomize agent order for this iteration
+            agents_order = session.agents.copy()
+            random.shuffle(agents_order)
+            
+            # Collect messages from each agent in randomized order
             messages = []
-            for idx, agent in enumerate(session.agents):
+            for idx, agent in enumerate(agents_order):
                 # Check budget before each agent
                 if session.budget.used >= session.budget.total_budget:
                     yield f"data: {json.dumps({'type': 'budget_exceeded'})}\n\n"
@@ -208,8 +218,12 @@ async def iterate_session_stream(session_id: str, request: ContinueSessionReques
                 session.budget.used += message.cost
                 session.budget.remaining = session.budget.total_budget - session.budget.used
                 
+                # Check if this was an error response
+                is_error = message.content.startswith("[Error:")
+                
                 # Send agent response event (use mode='json' to serialize dates)
-                yield f"data: {json.dumps({'type': 'agent_response', 'message': message.model_dump(mode='json'), 'budget': session.budget.model_dump(mode='json')})}\n\n"
+                event_type = 'agent_error' if is_error else 'agent_response'
+                yield f"data: {json.dumps({'type': event_type, 'message': message.model_dump(mode='json'), 'budget': session.budget.model_dump(mode='json')})}\n\n"
                 await asyncio.sleep(0.1)
             
             # Create iteration object
@@ -292,103 +306,25 @@ async def complete_session(session_id: str):
 @app.get("/models/pricing")
 async def get_model_pricing():
     """Get approximate pricing information for models.
-    
-    Note: Pricing is approximate and may change. 
+
+    Note: Pricing is approximate and may change.
     LiteLLM attempts to track actual costs automatically.
     Focus on token usage as the primary metric.
     """
+    # Generate pricing data from centralized config
+    pricing = []
+    for model in MODELS:
+        pricing.append({
+            "provider": model.provider.capitalize(),
+            "model": model.display_name,
+            "model_id": model.model_id,
+            "input_per_1m": model.input_per_1m,
+            "output_per_1m": model.output_per_1m,
+            "note": model.note
+        })
+
     return {
-        "pricing": [
-            {
-                "provider": "OpenAI",
-                "model": "GPT-5.1",
-                "model_id": "gpt-5.1",
-                "input_per_1m": 20.00,
-                "output_per_1m": 60.00,
-                "note": "Latest model with customizable personalities (Nov 2025)"
-            },
-            {
-                "provider": "OpenAI",
-                "model": "GPT-5",
-                "model_id": "gpt-5",
-                "input_per_1m": 15.00,
-                "output_per_1m": 45.00,
-                "note": "Advanced reasoning capabilities (Aug 2025)"
-            },
-            {
-                "provider": "OpenAI",
-                "model": "GPT-4o",
-                "model_id": "gpt-4o",
-                "input_per_1m": 5.00,
-                "output_per_1m": 15.00,
-                "note": "Optimized multimodal model"
-            },
-            {
-                "provider": "OpenAI",
-                "model": "GPT-4 Turbo",
-                "model_id": "gpt-4-turbo",
-                "input_per_1m": 10.00,
-                "output_per_1m": 30.00
-            },
-            {
-                "provider": "OpenAI",
-                "model": "GPT-3.5 Turbo",
-                "model_id": "gpt-3.5-turbo",
-                "input_per_1m": 0.50,
-                "output_per_1m": 1.50
-            },
-            {
-                "provider": "Anthropic",
-                "model": "Claude Opus 4.5",
-                "model_id": "claude-opus-4.5",
-                "input_per_1m": 18.00,
-                "output_per_1m": 90.00,
-                "note": "Best for complex workflows and long-context (Nov 2025)"
-            },
-            {
-                "provider": "Anthropic",
-                "model": "Claude Sonnet 4.5",
-                "model_id": "claude-sonnet-4.5",
-                "input_per_1m": 4.00,
-                "output_per_1m": 20.00,
-                "note": "Superior coding, 1M token context (Sept 2025)"
-            },
-            {
-                "provider": "Anthropic",
-                "model": "Claude 3.5 Sonnet",
-                "model_id": "claude-3-5-sonnet-20241022",
-                "input_per_1m": 3.00,
-                "output_per_1m": 15.00
-            },
-            {
-                "provider": "Anthropic",
-                "model": "Claude 3 Opus",
-                "model_id": "claude-3-opus-20240229",
-                "input_per_1m": 15.00,
-                "output_per_1m": 75.00
-            },
-            {
-                "provider": "Mistral",
-                "model": "Mistral Large",
-                "model_id": "mistral-large-latest",
-                "input_per_1m": 2.00,
-                "output_per_1m": 6.00
-            },
-            {
-                "provider": "Mistral",
-                "model": "Mistral Medium",
-                "model_id": "mistral-medium-latest",
-                "input_per_1m": 2.70,
-                "output_per_1m": 8.10
-            },
-            {
-                "provider": "Mistral",
-                "model": "Mistral Small",
-                "model_id": "mistral-small-latest",
-                "input_per_1m": 1.00,
-                "output_per_1m": 3.00
-            }
-        ],
+        "pricing": pricing,
         "note": "Prices are approximate and may vary. Actual costs tracked via LiteLLM. LiteLLM supports 100+ models."
     }
 
