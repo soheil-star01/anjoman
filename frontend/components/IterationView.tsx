@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Iteration } from '@/types'
-import { MessageSquare, Lightbulb, ChevronDown, ChevronRight } from 'lucide-react'
+import { MessageSquare, Lightbulb, ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import DirectionPicker from './DirectionPicker'
 
@@ -75,44 +75,57 @@ export default function IterationView({ iteration, onSelectSuggestion, isLatest 
 
           {/* Messages */}
           <div className="divide-y divide-gray-200">
-            {iteration.messages.map((message, idx) => (
-              <div key={idx} className="p-6">
-                <div className="flex items-start space-x-4">
-                  <div className="bg-blue-100 p-2 rounded-lg flex-shrink-0">
-                    <MessageSquare className="w-5 h-5 text-blue-600" />
-                  </div>
-                  
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center space-x-2">
-                        <span className="font-semibold text-gray-900">
-                          {message.agent_id}
-                        </span>
-                        <span className="text-gray-500">·</span>
-                        <span className="text-gray-700">{message.agent_role}</span>
-                      </div>
-                      
-                      <div className="flex items-center space-x-3 text-xs text-gray-500">
-                        <span className="font-semibold text-gray-700">
-                          {(message.tokens_in + message.tokens_out).toLocaleString()} tokens
-                        </span>
-                        {message.cost > 0 && (
-                          <span className="font-medium text-blue-600">
-                            ≈ ${message.cost.toFixed(4)}
-                          </span>
-                        )}
-                      </div>
+            {iteration.messages.map((message, idx) => {
+              const isError = message.content.startsWith('[Error:')
+              
+              return (
+                <div key={idx} className={`p-6 ${isError ? 'bg-red-50' : ''}`}>
+                  <div className="flex items-start space-x-4">
+                    <div className={`${isError ? 'bg-red-100' : 'bg-blue-100'} p-2 rounded-lg flex-shrink-0`}>
+                      {isError ? (
+                        <AlertTriangle className="w-5 h-5 text-red-600" />
+                      ) : (
+                        <MessageSquare className="w-5 h-5 text-blue-600" />
+                      )}
                     </div>
                     
-                    <div className="prose prose-sm max-w-none text-gray-800">
-                      <ReactMarkdown className="markdown-content">
-                        {message.content}
-                      </ReactMarkdown>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center space-x-2">
+                          <span className="font-semibold text-gray-900">
+                            {message.agent_id}
+                          </span>
+                          <span className="text-gray-500">·</span>
+                          <span className="text-gray-700">{message.agent_role}</span>
+                          {isError && (
+                            <span className="text-xs font-semibold text-red-600 bg-red-100 px-2 py-0.5 rounded">
+                              Error
+                            </span>
+                          )}
+                        </div>
+                        
+                        <div className="flex items-center space-x-3 text-xs text-gray-500">
+                          <span className="font-semibold text-gray-700">
+                            {(message.tokens_in + message.tokens_out).toLocaleString()} tokens
+                          </span>
+                          {message.cost > 0 && (
+                            <span className="font-medium text-blue-600">
+                              ≈ ${message.cost.toFixed(4)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <div className="prose prose-sm max-w-none text-gray-800">
+                        <ReactMarkdown className="markdown-content">
+                          {message.content}
+                        </ReactMarkdown>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
 
           {/* Summary */}

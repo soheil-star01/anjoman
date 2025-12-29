@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { AgentMessage } from '@/types'
-import { Loader2, MessageSquare, Sparkles } from 'lucide-react'
+import { Loader2, MessageSquare, Sparkles, AlertTriangle } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 
 interface StreamingIterationProps {
@@ -31,33 +31,49 @@ export default function StreamingIteration({
 
       {/* Messages */}
       <div className="space-y-4">
-        {messages.map((message, idx) => (
-          <div
-            key={idx}
-            className="border-l-4 border-blue-400 pl-4 py-2 bg-blue-50 rounded-r-lg animate-fadeIn"
-          >
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center space-x-2">
-                <MessageSquare className="w-4 h-4 text-blue-600" />
-                <span className="font-semibold text-gray-900">{message.agent_role}</span>
-                <span className="text-xs text-gray-500">({message.agent_id})</span>
-              </div>
-              <div className="flex items-center space-x-3 text-xs text-gray-500">
-                <span className="font-semibold text-gray-700">
-                  {(message.tokens_in + message.tokens_out).toLocaleString()} tokens
-                </span>
-                {message.cost > 0 && (
-                  <span className="font-medium text-blue-600">
-                    ≈ ${message.cost.toFixed(4)}
+        {messages.map((message, idx) => {
+          const isError = message.content.startsWith('[Error:')
+          const borderColor = isError ? 'border-red-400' : 'border-blue-400'
+          const bgColor = isError ? 'bg-red-50' : 'bg-blue-50'
+          const iconColor = isError ? 'text-red-600' : 'text-blue-600'
+          
+          return (
+            <div
+              key={idx}
+              className={`border-l-4 ${borderColor} pl-4 py-2 ${bgColor} rounded-r-lg animate-fadeIn`}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center space-x-2">
+                  {isError ? (
+                    <AlertTriangle className={`w-4 h-4 ${iconColor}`} />
+                  ) : (
+                    <MessageSquare className={`w-4 h-4 ${iconColor}`} />
+                  )}
+                  <span className="font-semibold text-gray-900">{message.agent_role}</span>
+                  <span className="text-xs text-gray-500">({message.agent_id})</span>
+                  {isError && (
+                    <span className="text-xs font-semibold text-red-600 bg-red-100 px-2 py-0.5 rounded">
+                      Error
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center space-x-3 text-xs text-gray-500">
+                  <span className="font-semibold text-gray-700">
+                    {(message.tokens_in + message.tokens_out).toLocaleString()} tokens
                   </span>
-                )}
+                  {message.cost > 0 && (
+                    <span className="font-medium text-blue-600">
+                      ≈ ${message.cost.toFixed(4)}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="prose prose-sm max-w-none">
+                <ReactMarkdown>{message.content}</ReactMarkdown>
               </div>
             </div>
-            <div className="prose prose-sm max-w-none">
-              <ReactMarkdown>{message.content}</ReactMarkdown>
-            </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
 
       {/* Current Agent Speaking */}
