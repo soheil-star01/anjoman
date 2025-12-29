@@ -5,7 +5,7 @@ import litellm
 import os
 from datetime import datetime
 from models import (
-    Session, AgentConfig, AgentMessage, Iteration, 
+    Session, AgentConfig, AgentMessage, Iteration,
     IterationSummary, SuggestedDirection, SessionStatus, SessionProposal, ApiKeys, ModelInfo
 )
 from prompts import (
@@ -14,6 +14,7 @@ from prompts import (
     build_iteration_summary_prompt,
     build_ray_agent_prompt
 )
+from models_config import MODELS, get_model_tiers
 
 
 class Dana:
@@ -37,108 +38,35 @@ class Dana:
     @staticmethod
     def _get_model_tiers(api_keys: Optional[ApiKeys] = None) -> dict[str, dict]:
         """Get available models organized by tier (budget/balanced/performance)."""
-        model_tiers = {
-            "openai": {
-                "budget": ["gpt-3.5-turbo", "gpt-4o-mini"],
-                "balanced": ["gpt-4o", "gpt-4-turbo"],
-                "performance": ["gpt-5", "gpt-5.1"],
-            },
-            "anthropic": {
-                "budget": ["claude-3-haiku-20240307"],
-                "balanced": ["claude-3-5-sonnet-20241022", "claude-sonnet-4.5"],
-                "performance": ["claude-opus-4.5", "claude-3-opus-20240229"],
-            },
-            "mistral": {
-                "budget": ["mistral-small-latest"],
-                "balanced": ["mistral-medium-latest"],
-                "performance": ["mistral-large-latest"],
-            },
-            "google": {
-                "budget": ["gemini-1.5-flash"],
-                "balanced": ["gemini-1.5-pro"],
-                "performance": ["gemini-2.0-flash-exp"],
-            },
-            "cohere": {
-                "budget": ["command-r"],
-                "balanced": ["command-r"],
-                "performance": ["command-r-plus"],
-            }
-        }
-        
+        # Get model tiers from centralized config
+        model_tiers = get_model_tiers()
+
         # Filter by available API keys
         if api_keys:
             available_providers = api_keys.get_available_providers()
             return {p: tiers for p, tiers in model_tiers.items() if p in available_providers}
-        
+
         return model_tiers
     
     @staticmethod
     def _get_available_models(api_keys: Optional[ApiKeys] = None) -> list[ModelInfo]:
         """Get list of available models based on provided API keys."""
+        # Convert centralized config to ModelInfo objects
         models = []
-        
-        # Define all supported models by provider
-        all_models = {
-            "openai": [
-                ModelInfo(model_id="gpt-5.1", display_name="GPT-5.1", provider="openai", 
-                         description="Latest with customizable personalities"),
-                ModelInfo(model_id="gpt-5", display_name="GPT-5", provider="openai",
-                         description="Advanced reasoning capabilities"),
-                ModelInfo(model_id="gpt-4o", display_name="GPT-4o", provider="openai",
-                         description="Optimized multimodal model"),
-                ModelInfo(model_id="gpt-4-turbo", display_name="GPT-4 Turbo", provider="openai",
-                         description="Fast and capable"),
-                ModelInfo(model_id="gpt-3.5-turbo", display_name="GPT-3.5 Turbo", provider="openai",
-                         description="Fast and economical"),
-            ],
-            "anthropic": [
-                ModelInfo(model_id="claude-opus-4.5", display_name="Claude Opus 4.5", provider="anthropic",
-                         description="Best for complex workflows"),
-                ModelInfo(model_id="claude-sonnet-4.5", display_name="Claude Sonnet 4.5", provider="anthropic",
-                         description="Superior coding, 1M context"),
-                ModelInfo(model_id="claude-3-5-sonnet-20241022", display_name="Claude 3.5 Sonnet", provider="anthropic",
-                         description="Balanced performance"),
-                ModelInfo(model_id="claude-3-opus-20240229", display_name="Claude 3 Opus", provider="anthropic",
-                         description="Most capable Claude 3"),
-                ModelInfo(model_id="claude-3-haiku-20240307", display_name="Claude 3 Haiku", provider="anthropic",
-                         description="Fast and economical"),
-            ],
-            "mistral": [
-                ModelInfo(model_id="mistral-large-latest", display_name="Mistral Large", provider="mistral",
-                         description="Most capable Mistral"),
-                ModelInfo(model_id="mistral-medium-latest", display_name="Mistral Medium", provider="mistral",
-                         description="Balanced performance"),
-                ModelInfo(model_id="mistral-small-latest", display_name="Mistral Small", provider="mistral",
-                         description="Fast and economical"),
-            ],
-            "google": [
-                ModelInfo(model_id="gemini-2.0-flash-exp", display_name="Gemini 2.0 Flash", provider="google",
-                         description="Latest Gemini, very fast"),
-                ModelInfo(model_id="gemini-1.5-pro", display_name="Gemini 1.5 Pro", provider="google",
-                         description="Advanced capabilities"),
-                ModelInfo(model_id="gemini-1.5-flash", display_name="Gemini 1.5 Flash", provider="google",
-                         description="Fast and efficient"),
-            ],
-            "cohere": [
-                ModelInfo(model_id="command-r-plus", display_name="Command R+", provider="cohere",
-                         description="Advanced reasoning"),
-                ModelInfo(model_id="command-r", display_name="Command R", provider="cohere",
-                         description="Balanced performance"),
-            ]
-        }
-        
-        # If no API keys provided, return all models
-        if not api_keys:
-            for provider_models in all_models.values():
-                models.extend(provider_models)
-            return models
-        
-        # Return only models for which we have API keys
-        available_providers = api_keys.get_available_providers()
-        for provider in available_providers:
-            if provider in all_models:
-                models.extend(all_models[provider])
-        
+
+        for model_config in MODELS:
+            models.append(ModelInfo(
+                model_id=model_config.model_id,
+                display_name=model_config.display_name,
+                provider=model_config.provider,
+                description=model_config.description
+            ))
+
+        # Filter by available API keys
+        if api_keys:
+            available_providers = api_keys.get_available_providers()
+            models = [m for m in models if m.provider in available_providers]
+
         return models
     
     @staticmethod
@@ -343,7 +271,7 @@ class Ray:
             }
             
             # Newer models use max_completion_tokens
-            if any(x in agent.model.lower() for x in ['gpt-5', 'claude-opus-4', 'claude-sonnet-4']):
+            if any(x in agent.model.lower() for x in ['gpt-5', 'claude-opus-4-5', 'claude-4-5-sonnet']):
                 params["max_completion_tokens"] = 500
             else:
                 params["max_tokens"] = 500
