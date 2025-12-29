@@ -1,6 +1,7 @@
 """Prompt for Dana to propose agents."""
 
 from typing import Optional
+from models_config import get_example_models_by_tier
 
 
 def build_agent_proposal_prompt(
@@ -11,24 +12,33 @@ def build_agent_proposal_prompt(
     providers_str: str
 ) -> str:
     """Build prompt for Dana to propose agents.
-    
+
     Args:
         issue: The issue to discuss
         budget: Budget in dollars
         num_agents: Number of agents to propose (None = Dana decides)
         model_preference: "budget", "balanced", or "performance"
         providers_str: Comma-separated list of available providers
-    
+
     Returns:
         The prompt string
     """
-    
+
     agent_count_instruction = (
-        f"exactly {num_agents} agents (Rays)" 
-        if num_agents 
+        f"exactly {num_agents} agents (Rays)"
+        if num_agents
         else "3-5 agents (Rays) - you decide the optimal number"
     )
-    
+
+    # Get example models from centralized config
+    examples = get_example_models_by_tier()
+    budget_examples = ", ".join(examples["budget"])
+    balanced_examples = ", ".join(examples["balanced"])
+    performance_examples = ", ".join(examples["performance"])
+
+    # Pick one example for the JSON demo
+    demo_model = examples[model_preference][0] if examples[model_preference] else "claude-sonnet-4-5-20250929"
+
     return f"""Given this issue, propose {agent_count_instruction} to discuss it.
 
 Issue: {issue}
@@ -39,9 +49,11 @@ Model Preference: {model_preference} (budget-friendly / balanced / performance-f
 Available providers: {providers_str}
 
 Based on the model preference:
-- If "budget": Choose economical models (e.g., gpt-3.5-turbo, claude-3-haiku, mistral-small)
-- If "balanced": Choose mid-tier models (e.g., gpt-4o, claude-3-5-sonnet, mistral-medium)  
-- If "performance": Choose most capable models (e.g., gpt-5.1, claude-opus-4.5, mistral-large)
+- If "budget": Choose economical models (e.g., {budget_examples})
+- If "balanced": Choose mid-tier models (e.g., {balanced_examples})
+- If "performance": Choose most capable models (e.g., {performance_examples})
+
+IMPORTANT: Use EXACT model IDs as shown above. Do not use shortcuts like "claude-3-5-sonnet" or add "-latest" suffix.
 
 For each Ray, specify:
 - role (e.g., Analyst, Critic, Strategist, Domain Expert, Ethicist, Synthesizer)
@@ -58,10 +70,12 @@ Consider:
 Respond in JSON format:
 {{
   "agents": [
-    {{"role": "Analyst", "style": "data-driven", "model": "claude-sonnet-4.5"}},
+    {{"role": "Analyst", "style": "data-driven", "model": "{demo_model}"}},
     ...
   ],
   "rationale": "Brief explanation of your choices and agent count decision"
 }}
+
+Remember: Use exact model IDs from the lists above, not shortcuts.
 """
 
